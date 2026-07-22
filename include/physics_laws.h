@@ -1,0 +1,14 @@
+#pragma once
+
+#include <vector>
+#include "particle.h"
+#include "hex_grid.h"
+#include "config.h"
+
+
+namespace Laws {
+    void inertia(std::vector<Particle>& particles, const PhysicsConfig& physics);
+    void bounce(std::vector<Particle>& particles, const SpaceConfig& space);
+    void elastic(std::vector<Particle>& particles, const PhysicsConfig& physics, const HexGrid& hex_grid);
+    void friction(std::vector<Particle>& particles, const PhysicsConfig& physics, const HexGrid& hex_grid);
+};

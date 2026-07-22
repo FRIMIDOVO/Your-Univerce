@@ -1,0 +1,11 @@
+# Visualizer Configuration
+width 1000
+height 1000
+width_texture 16000
+height_texture 16000
+show_velocity_vec 1
+vector_scale 0.5
+max_speed_color 10
+arrow_size 0.2
+arrow_angle 0.4
+show_hex_cells 0
