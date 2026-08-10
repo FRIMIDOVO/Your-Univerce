@@ -8,6 +8,27 @@ namespace Laws {
         }
     }
 
+    void gravity(std::vector<Particle>& particles, const PhysicsConfig& physics) {
+        if (physics.G) {
+            for (size_t i = 0; i < particles.size(); ++i) {
+                for (size_t j = i + 1; j < particles.size(); ++j) {
+                    auto& p1 = particles[i];
+                    auto& p2 = particles[j];
+                    
+                    Vec2 diff = p2.get_position() - p1.get_position();
+                    float dist = diff.norm() + physics.softening;
+                    float force = physics.G * p1.get_mass() * p2.get_mass() / (dist * dist);
+                    
+                    Vec2 accel = diff * (force / p1.get_mass() / dist);
+                    p1.add_velocity(accel * physics.dt);
+                    
+                    accel = diff * (-force / p2.get_mass() / dist);
+                    p2.add_velocity(accel * physics.dt);
+                }
+            }
+        }
+    }
+
     void bounce(std::vector<Particle>& particles, const SpaceConfig& space) {
         for (Particle& p : particles) {
             Vec2 pos = p.get_position();

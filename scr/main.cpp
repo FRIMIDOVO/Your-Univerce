@@ -29,7 +29,7 @@ int main() {
     std::filesystem::remove_all("frames");
 
 
-    populate(engine, space, 1000000);
+    populate(engine, space, 5000);
 
 
     std::cout << "Particles: " << engine.get_particles().size() << "\n";
@@ -52,10 +52,11 @@ int main() {
             return std::chrono::duration<double, std::milli>(end - start).count();
         };
         
+        std::cout << "Frame: " << frame << " | ";
         std::cout << "Physics: " << to_ms(t0, t1) << " ms | "
                 << "Render: " << to_ms(t1, t2) << " ms | "
                 << "Record: " << to_ms(t2, t3) << " ms | "
-                << "Total: " << to_ms(t0, t3) << " ms\n";
+                << "Total: " << to_ms(t0, t3) << " ms" << std::endl;
 
         ++frame;
     }
@@ -63,7 +64,8 @@ int main() {
     ConfigLoader::save("space_config.txt", space);
     ConfigLoader::save("physics_config.txt", physics);
     ConfigLoader::save("viz_config.txt", viz);
-    std::cout << "View saved frames `bin/frames/ and encode their with encode_video.bat";
+    std::cout << "Generated " << frame << " frames.";
+    std::cout << "View saved frames `bin/frames/` and encode their with encode_video.bat or encode_gif.bat";
     std::cin.get();
 
         return 0;

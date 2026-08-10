@@ -17,6 +17,7 @@
     FIELD(max_bound)
 
 #define PHYSICS_FIELDS \
+    FIELD(G) \
     FIELD(dt) \
     FIELD(softening) \
     FIELD(K_elasticity) \
@@ -44,6 +45,7 @@ struct SpaceConfig {
 
 struct PhysicsConfig {
     // Базовые параметры
+    float G = 1.0;
     float dt = 0.001f;
     float softening = 0.001f;
 

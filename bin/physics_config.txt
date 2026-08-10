@@ -1,6 +1,0 @@
-# Physics Configuration
-dt 0.001
-softening 0.001
-K_elasticity 0.5
-K_friction 0.5
-contact_distance 1.01

@@ -5,6 +5,7 @@
 void PhysicsEngine::step() {
     hex_grid.update_cells(particles);
     Laws::inertia(particles, physics);
+    Laws::gravity(particles, physics);
     Laws::elastic(particles, physics, hex_grid);
     Laws::friction(particles, physics, hex_grid);
     Laws::bounce(particles, space);
