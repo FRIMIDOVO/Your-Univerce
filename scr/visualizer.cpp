@@ -71,7 +71,7 @@ void Visualizer::draw_particle(const Particle& p) {
     circle.setPosition(sf::Vector2f(pos.x - radius, pos.y - radius));
     
     float mass = p.get_mass();
-    float norm_mass = std::min(1.0f, mass / 5.0f);
+    float norm_mass = std::min(1.0f, mass / 7.0f);
     
     sf::Color color(
         static_cast<int>(200 * norm_mass + 50),

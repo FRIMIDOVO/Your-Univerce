@@ -1,5 +1,6 @@
 #include <cmath>
 #include "physics_laws.h"
+#include <iostream>
 
 namespace Laws {
     void inertia(std::vector<Particle>& particles, const PhysicsConfig& physics) {
@@ -49,6 +50,30 @@ namespace Laws {
             } else if (pos.y > space.max_bound - r) {
                 p.set_position({pos.x, space.max_bound - r});
                 p.set_velocity({vel.x, -std::abs(vel.y)});
+            }
+        }
+    }
+
+    void periodic(std::vector<Particle>& particles, const SpaceConfig& space) {
+        float min_bound = space.min_bound;
+        float max_bound = space.max_bound;
+        float size = max_bound - min_bound;
+        
+        for (Particle& p : particles) {
+            Vec2 pos = p.get_position();
+            
+            // По X
+            if (pos.x < min_bound) {
+                p.set_position({pos.x + size, pos.y});
+            } else if (pos.x > max_bound) {
+                p.set_position({pos.x - size, pos.y});
+            }
+            
+            // По Y
+            if (pos.y < min_bound) {
+                p.set_position({pos.x, pos.y + size});
+            } else if (pos.y > max_bound) {
+                p.set_position({pos.x, pos.y - size});
             }
         }
     }
@@ -121,46 +146,83 @@ namespace Laws {
         for (size_t i = 0; i < particles.size(); ++i) {
             Particle& p1 = particles[i];
             
-            // 1. BROAD-PHASE: Получаем все гексы в радиусе действия трения.
-            // Используем p1.radius() * contact_distance как безопасную оценку радиуса поиска.
             float search_radius = p1.radius() * physics.contact_distance;
             std::vector<Hex> intersecting_hexes = hex_grid.get_intersecting_hexes(p1.get_position(), search_radius);
 
             for (const Hex& hex : intersecting_hexes) {
-                // 2. Получаем КОНСТАНТНУЮ ссылку на вектор индексов (0 копий памяти!)
                 const std::vector<size_t>& indices = hex_grid.get_indices_hex(hex);
 
                 for (size_t idx : indices) {
-                    // 3. 🔑 КЛЮЧЕВАЯ ОПТИМИЗАЦИЯ:
-                    // Гарантируем, что каждая пара (p1, p2) обрабатывается РОВНО ОДИН РАЗ.
-                    // Это также автоматически исключает сравнение частицы самой с собой (idx == i).
-                    if (idx <= i) {
-                        continue;
-                    }
+                    if (idx <= i) continue;
 
-                    // 4. МГНОВЕННЫЙ доступ ко второй частице по индексу (O(1))
                     Particle& p2 = particles[idx];
                     
-                    // 5. NARROW-PHASE: Точная проверка трения
                     Vec2 diff = p2.get_position() - p1.get_position();
                     float dist_sq = diff.norm_sq();
                     float min_dist = (p1.radius() + p2.radius()) * physics.contact_distance;
                     
-                    // Проверяем dist_sq > 0.000001f вместо dist > 0.001f, чтобы избежать std::sqrt до последней необходимости
                     if (dist_sq < min_dist * min_dist && dist_sq > 0.000001f) {
                         float dist = std::sqrt(dist_sq);
                         Vec2 normal = diff / dist;
                         
+                        // Относительная скорость
                         Vec2 rel_vel = p1.get_velocity() - p2.get_velocity();
-                        float rel_vel_norm = rel_vel.x * normal.x + rel_vel.y * normal.y; // скалярное произведение
-                        
+                        float rel_vel_norm = rel_vel.x * normal.x + rel_vel.y * normal.y;
                         Vec2 rel_vel_tang = rel_vel - normal * rel_vel_norm;
                         
+                        // === ПРОСТОЕ ТРЕНИЕ (с учётом массы) ===
                         float damping = 1.0f - physics.K_friction * physics.dt * 30.0f;
                         if (damping < 0) damping = 0;
                         
-                        p1.add_velocity(-rel_vel_tang * (1.0f - damping) / 2.0f);
-                        p2.add_velocity(rel_vel_tang * (1.0f - damping) / 2.0f);
+                        // Тормозим с учётом массы (тяжёлые тормозят медленнее)
+                        p1.add_velocity(-rel_vel_tang * (1.0f - damping) / (2.0f + p1.get_mass() * 0.1f));
+                        p2.add_velocity(rel_vel_tang * (1.0f - damping) / (2.0f + p2.get_mass() * 0.1f));
+                    }
+                }
+            }
+        }
+    }
+
+    void stickiness(std::vector<Particle>& particles, const PhysicsConfig& physics, const HexGrid& hex_grid) {
+        if (physics.F_stickiness == 0.0f) return;
+
+        for (size_t i = 0; i < particles.size(); ++i) {
+            Particle& p1 = particles[i];
+            
+            float search_radius = p1.radius() * physics.contact_distance;
+            std::vector<Hex> intersecting_hexes = hex_grid.get_intersecting_hexes(p1.get_position(), search_radius);
+
+            for (const Hex& hex : intersecting_hexes) {
+                const std::vector<size_t>& indices = hex_grid.get_indices_hex(hex);
+
+                for (size_t idx : indices) {
+                    if (idx <= i) continue;
+
+                    Particle& p2 = particles[idx];
+                    
+                    Vec2 diff = p2.get_position() - p1.get_position();
+                    float dist = diff.norm();
+                    float min_dist = p1.radius() + p2.radius();
+                    float max_dist = min_dist * physics.contact_distance;
+                    
+                    // === 1. ПРОВЕРКА: частицы в радиусе липкости ===
+                    if (dist < max_dist && dist > 0.001f) {
+                        Vec2 normal = diff / dist;
+                        
+                        // === 2. РАСЧЁТ СИЛЫ ===
+                        // Сила растёт по мере сближения (от 0 на max_dist до максимума на min_dist)
+                        float t = 1.0f - (dist - min_dist) / (max_dist - min_dist);  // 0..1
+                        t = std::clamp(t, 0.0f, 1.0f);
+                        
+                        // При t=0 (на max_dist) сила 0, при t=1 (на min_dist) сила F_stickiness
+                        float force_magnitude = physics.F_stickiness * t * 2.0f;  // умножаем на 2 для эффекта
+                        
+                        // === 3. ПРИМЕНЕНИЕ СИЛЫ ===
+                        Vec2 force = normal * force_magnitude;
+                        
+                        // Разделяем по массе (третий закон Ньютона)
+                        p1.add_velocity(force * physics.dt / p1.get_mass());
+                        p2.add_velocity(-force * physics.dt / p2.get_mass());
                     }
                 }
             }

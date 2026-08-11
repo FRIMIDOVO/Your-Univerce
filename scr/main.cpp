@@ -12,6 +12,7 @@ void smash(PhysicsEngine& engine);
 void populate(PhysicsEngine& engine, SpaceConfig& space, long long N);
 void double_system(PhysicsEngine& engine);
 void triple_system(PhysicsEngine& engine);
+void spawn_rotating_cluster(PhysicsEngine& engine, Vec2 center, int count, float radius, float mass, float rotation_speed);
 
 
 int main() {
@@ -28,14 +29,21 @@ int main() {
     //GifRecorder recorder("record.gif", viz);
     std::filesystem::remove_all("frames");
 
+    // ===== Спавн частиц =====
 
-    populate(engine, space, 5000);
+    spawn_rotating_cluster(engine, Vec2(0,0), 1000, 3.0f, 10.0f, 100.0f);
 
+    // ===== =====
 
     std::cout << "Particles: " << engine.get_particles().size() << "\n";
 
+    int count_frames;
+    std::cout << "Enter count frames for calculation: ";
+    std::cin >> count_frames;
+    std::cout << std::endl;
+
     int frame = 0;
-    while (visualizer.is_open()) {
+    while (visualizer.is_open() && count_frames != frame) {
         auto t0 = std::chrono::high_resolution_clock::now();
         
         engine.step();
@@ -44,7 +52,7 @@ int main() {
         visualizer.render();
         auto t2 = std::chrono::high_resolution_clock::now();
         
-        FrameSaver::save_frame(visualizer.get_texture(), frame);
+        // FrameSaver::save_frame(visualizer.get_texture(), frame);
         auto t3 = std::chrono::high_resolution_clock::now();
         
         // Вывод времени каждого этапа
@@ -66,6 +74,7 @@ int main() {
     ConfigLoader::save("viz_config.txt", viz);
     std::cout << "Generated " << frame << " frames.";
     std::cout << "View saved frames `bin/frames/` and encode their with encode_video.bat or encode_gif.bat";
+    std::cin.get();
     std::cin.get();
 
         return 0;
@@ -132,4 +141,28 @@ void triple_system(PhysicsEngine& engine) {
         Vec2(v * sqrt3 / 2.0f, -v / 2.0f),
         m
     ));
+}
+
+void spawn_rotating_cluster(PhysicsEngine& engine, Vec2 center, int count, float radius, float mass, float rotation_speed) {
+    for (int i = 0; i < count; ++i) {
+        // Случайное положение внутри круга
+        float angle = static_cast<float>(rand()) / RAND_MAX * 2.0f * 3.14159f;
+        float r = radius * std::sqrt(static_cast<float>(rand()) / RAND_MAX);  // равномерно по площади
+        float x = center.x + r * std::cos(angle);
+        float y = center.y + r * std::sin(angle);
+        
+        // Скорость = вращение вокруг центра + случайный разброс
+        float v_rot = rotation_speed * r;
+        float vx = -v_rot * std::sin(angle) + (static_cast<float>(rand()) / RAND_MAX - 0.5f) * 0.5f;
+        float vy = v_rot * std::cos(angle) + (static_cast<float>(rand()) / RAND_MAX - 0.5f) * 0.5f;
+        
+        float m = mass * (0.5f + static_cast<float>(rand()) / RAND_MAX * 0.5f);
+        
+        engine.add_particle(Particle(
+            1000 + i,
+            Vec2(x, y),
+            Vec2(vx, vy),
+            m
+        ));
+    }
 }

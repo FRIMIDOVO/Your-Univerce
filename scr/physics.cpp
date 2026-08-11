@@ -8,6 +8,8 @@ void PhysicsEngine::step() {
     Laws::gravity(particles, physics);
     Laws::elastic(particles, physics, hex_grid);
     Laws::friction(particles, physics, hex_grid);
-    Laws::bounce(particles, space);
+    Laws::stickiness(particles, physics, hex_grid);
+    //Laws::bounce(particles, space);
+    Laws::periodic(particles, space);
     time += physics.dt;
 }

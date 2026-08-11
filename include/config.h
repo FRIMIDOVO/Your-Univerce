@@ -21,6 +21,7 @@
     FIELD(dt) \
     FIELD(softening) \
     FIELD(K_elasticity) \
+    FIELD(F_stickiness) \
     FIELD(K_friction) \
     FIELD(contact_distance)
 
@@ -51,6 +52,9 @@ struct PhysicsConfig {
 
     // Упругость
     float K_elasticity = 0.5f;
+
+    // Липкость
+    float F_stickiness = 1.0f;
     
     // Трение
     float K_friction = 0.5f;
